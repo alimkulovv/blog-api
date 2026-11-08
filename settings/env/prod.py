@@ -1,4 +1,4 @@
-from settings.base import *  # noqa: F401, F403
+from settings.base import *  # noqa: F403
 from settings.conf import DB_HOST, DB_NAME, DB_PASSWORD, DB_PORT, DB_USER
 
 DEBUG = False
