@@ -29,3 +29,21 @@ Then:
 ## ERD
 
 ![ERD](docs/erd.png)
+
+## Seeding
+
+    python manage.py seed
+    python manage.py seed --users 50 --posts 300 --comments 1500
+    python manage.py seed --clear
+
+Arguments: `--users` (20), `--posts` (100), `--comments` (500), `--clear`.
+All seeded users have the password from `SEED_PASSWORD` in `seed.py`.
+
+## Admin
+
+Admin is built with Django Unfold: `/admin/`.
+
+![Dashboard](docs/screenshots/dashboard.png)
+![Post list](docs/screenshots/post-list.png)
+![Post edit](docs/screenshots/post-edit.png)
+![User list](docs/screenshots/user-list.png)

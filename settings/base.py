@@ -63,6 +63,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "auths.User"
 
 UNFOLD = {
+    "DASHBOARD_CALLBACK": "apps.blog.callbacks.dashboard_callback",
     "SITE_TITLE": "Blog API",
     "SITE_HEADER": "Blog API",
     "SITE_SUBHEADER": "Content management",

@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+{% load i18n unfold %}
+
+{% block content %}
+<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 mb-6">
+  {% for card in cards %}
+    {% component "unfold/components/card.html" with title=card.title %}
+      {% component "unfold/components/text.html" %}{{ card.value }}{% endcomponent %}
+    {% endcomponent %}
+  {% endfor %}
+</div>
+
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+  {% component "unfold/components/card.html" with title="Posts per category" %}
+    {% component "unfold/components/chart/bar.html" with data=chart_data height=250 %}{% endcomponent %}
+  {% endcomponent %}
+
+  {% component "unfold/components/card.html" with title="Top 5 authors" %}
+    {% component "unfold/components/table.html" with table=authors_table %}{% endcomponent %}
+  {% endcomponent %}
+</div>
+
+<div class="mt-6">
+  {% component "unfold/components/card.html" with title="Published vs drafts" %}
+    {% component "unfold/components/progress.html" with title="Published" value=published_percent %}{% endcomponent %}
+    {% component "unfold/components/progress.html" with title="Drafts" value=drafts_percent %}{% endcomponent %}
+  {% endcomponent %}
+</div>
+{% endblock %}
