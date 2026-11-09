@@ -4,6 +4,8 @@ from django.http import HttpRequest
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
 from unfold.sections import TableSection
+from unfold.contrib.filters.admin import AutocompleteSelectFilter, RangeDateTimeFilter
+from django.utils.text import Truncator
 
 from apps.blog.models import Category, Tag , Comment , Post
 
@@ -44,4 +46,23 @@ class PostAdmin(ModelAdmin):
 
 @admin.register(Comment)
 class CommentAdmin(ModelAdmin):
-    pass
+    list_display = ["post_title", "author", "body_preview", "created_at"]
+    list_filter = [
+        ("post", AutocompleteSelectFilter),
+        ("author", AutocompleteSelectFilter),
+        ("created_at", RangeDateTimeFilter),
+    ]
+    list_filter_submit = True
+    list_select_related = ["post", "author"]
+    search_fields = ["body", "author__email", "post__title"]
+    autocomplete_fields = ["post", "author"]
+
+    @display(description="Post", ordering="post__title")
+    def post_title(self, obj: Comment) -> str:
+        return obj.post.title
+
+    @display(description="Body")
+    def body_preview(self, obj: Comment) -> str:
+        return Truncator(obj.body).chars(COMMENT_BODY_PREVIEW_LENGTH)
+
+COMMENT_BODY_PREVIEW_LENGTH = 50

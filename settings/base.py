@@ -131,13 +131,13 @@ UNFOLD = {
             },
         ],
     },
-    "TABS": [
+        "TABS": [
         {
             "models": ["blog.post"],
             "items": [
                 {"title": "All", "link": reverse_lazy("admin:blog_post_changelist")},
-                {"title": "Published", "link_callback": "apps.blog.callbacks.published_tab_link"},
-                {"title": "Drafts", "link_callback": "apps.blog.callbacks.drafts_tab_link"},
+                {"title": "Published", "link": "apps.blog.callbacks.published_tab_link"},
+                {"title": "Drafts", "link": "apps.blog.callbacks.drafts_tab_link"},
             ],
         },
     ],
