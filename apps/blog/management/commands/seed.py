@@ -230,4 +230,5 @@ class Command(BaseCommand):
     for comment in created_comments:
         comment.created_at = random_datetime(published_dates[comment.post_id], now)
     Comment.objects.bulk_update(created, ["created_at"], batch_size=BULK_CREATE_BATCH_SIZE)
+
     return len(created)
