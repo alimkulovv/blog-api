@@ -2,17 +2,19 @@ from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
-from django.db.models import F, Q, QuerySet, Value
+from django.db.models import Avg, Count, F, Max, Min, Q, QuerySet, Value
 from django.db.models.functions import Coalesce
 
 from apps.auths.models import User
-from apps.blog.models import Category, Comment, Post
+from apps.blog.models import Category, Comment, Post, Tag
 
 NEWEST_POSTS_LIMIT = 5
 POSTS_PER_PAGE = 10
 EMAIL_DOMAIN_PREFIX = "@"
 EDITED_AFTER_HOURS = 1
 UNCATEGORIZED = "Uncategorized"
+TOP_AUTHORS_LIMIT = 5
+AVERAGE_ROUND_DIGITS = 2
 
 
 # --- Level 1 ---
@@ -177,6 +179,69 @@ def published_posts_overview() -> list[dict[str, Any]]:
     )
     return list(posts)
 
+# --- Level 6 ---
+def posts_stats() -> dict[str, Any]:
+    """Post counts and first/last post dates in one query."""
+    return Post.objects.aggregate(
+        total=Count("id"),
+        published=Count("id", filter=Q(status=Post.Status.PUBLISHED)),
+        drafts=Count("id", filter=Q(status=Post.Status.DRAFT)),
+        first_post_at=Min("created_at"),
+        last_post_at=Max("created_at"),
+    )
+
+
+def average_comments_per_post() -> float:
+    """Average number of comments on a published post, posts with 0 comments count too."""
+    result = (
+        Post.objects.filter(status=Post.Status.PUBLISHED)
+        .annotate(comments_total=Count("comments"))
+        .aggregate(average=Avg("comments_total", default=0.0))
+    )
+    return round(result["average"], AVERAGE_ROUND_DIGITS)
+
+
+# --- Level 7 ---
+def categories_with_post_count() -> QuerySet[Category]:
+    """Every category with post_count, most posts first, then by name."""
+    return Category.objects.annotate(post_count=Count("posts")).order_by("-post_count", "name")
+
+
+def categories_with_published_count() -> QuerySet[Category]:
+    """Every category with published_count, categories with 0 published posts included."""
+    return Category.objects.annotate(
+        published_count=Count("posts", filter=Q(posts__status=Post.Status.PUBLISHED)),
+    ).order_by("-published_count", "name")
+
+
+def top_authors() -> QuerySet[User]:
+    """Top users by number of published posts."""
+    return User.objects.annotate(
+        published_count=Count("posts", filter=Q(posts__status=Post.Status.PUBLISHED)),
+    ).order_by("-published_count", "email")[:TOP_AUTHORS_LIMIT]
+
+
+def popular_tags(min_posts: int) -> QuerySet[Tag]:
+    """Tags used in at least min_posts posts, with post_count."""
+    return (
+        Tag.objects.annotate(post_count=Count("posts"))
+        .filter(post_count__gte=min_posts)
+        .order_by("-post_count", "name")
+    )
+
+
+def posts_per_status() -> list[dict[str, Any]]:
+    """Number of posts for each status."""
+    return list(Post.objects.values("status").annotate(count=Count("id")).order_by("status"))
+
+
+def users_activity() -> QuerySet[User]:
+    """Every user with post_count and comment_count (distinct, so the joins do not multiply)."""
+    return User.objects.annotate(
+        post_count=Count("posts", distinct=True),
+        comment_count=Count("comments", distinct=True),
+    ).order_by("email")
+
 QUERIES: dict[int, Callable[..., Any]] = {
     1: categories_by_name,
     2: published_posts,
@@ -206,4 +271,13 @@ QUERIES: dict[int, Callable[..., Any]] = {
     26: comments_before_post,
     27: published_authors_emails,
     28: published_posts_overview,
+    29: posts_stats,
+    30: average_comments_per_post,
+    31: categories_with_post_count,
+    32: categories_with_published_count,
+    33: top_authors,
+    34: popular_tags,
+    35: posts_per_status,
+    36: users_activity,
 }
+

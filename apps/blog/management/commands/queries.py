@@ -17,6 +17,7 @@ SAMPLE_DAYS = 30
 SAMPLE_PERIOD_DAYS = 90
 SAMPLE_CATEGORIES = 2
 MIN_TAGS_FOR_PAIR = 2
+SAMPLE_MIN_TAG_POSTS = 10
 
 
 def tag_pair() -> tuple[str, str]:
@@ -52,4 +53,5 @@ def sample_arguments() -> dict[int, dict[str, Any]]:
         16: {"tag_slug": slugify(TAG_NAMES[0])},
         17: {"category_slug": slugify(CATEGORY_NAMES[0])},
         21: {"first_slug": first_tag, "second_slug": second_tag},
+        34: {"min_posts": SAMPLE_MIN_TAG_POSTS},
     }
