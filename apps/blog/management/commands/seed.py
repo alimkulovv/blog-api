@@ -1,11 +1,13 @@
 import random
 import time
+from datetime import datetime, timedelta
 from typing import Any
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand, CommandError, CommandParser
 from django.db import transaction
+from django.utils import timezone
 from django.utils.text import slugify
 from faker import Faker
 
@@ -33,6 +35,12 @@ COMMENT_MAX_SENTENCES = 3
 SLUG_SUFFIX_START = 2
 TITLE_MAX_LENGTH = 200
 
+DATE_RANGE_DAYS = 365
+EDITED_POST_RATIO = 0.3
+MIN_EDIT_DELAY_DAYS = 1
+MAX_EDIT_DELAY_DAYS = 30
+BULK_CREATE_BATCH_SIZE = 500
+
 CATEGORY_NAMES = [
     "Python",
     "Django",
@@ -46,6 +54,22 @@ CATEGORY_NAMES = [
 TAG_NAMES = [
     "api", "rest", "orm", "docker", "git", "linux", "postgres", "redis", "celery", "async", "tips", "tutorial", "performance", "deployment", "refactoring", "ci-cd", "beginners", "architecture", "debugging", "tools",
     ] # fmt: skip
+
+def random_datetime(start: datetime, end: datetime) -> datetime:
+    """Return a random moment between two start and end. """
+    seconds = int((end - start).total_seconds())
+    return start + timedelta(seconds=random.randint(0, seconds))
+
+
+def randomn_edit_time(created: datetime , now: datetime ) -> datetime:
+    """Return updated_at 1-30 days after created_at , but not later than  now."""
+    min_delay = timedelta(days=MIN_EDIT_DELAY_DAYS)
+    max_delay = min(timedelta(days=MAX_EDIT_DELAY_DAYS), now - created_at)
+    if max_delay < min_delay:
+        return created_at
+    delay_seconds = random.randint(int(min_delay.total_seconds()), int(max_delay.total_seconds()))
+    return created_at + timedelta(seconds=delay_seconds)
+
 
 class Command(BaseCommand):
     help = "Fill the database with fake data."
@@ -170,16 +194,28 @@ class Command(BaseCommand):
                 )
             )
         created_posts = Post.objects.bulk_create(posts)
+        self.set_post_dates(created_posts)
+        published_dates = {post.id: post.created_at for post in created if post.status == Post.Status.PUBLISHED}
         for post in created:
             tags_number = random .randint(0, min(MAXS_TAGS_PER_POST, len(tag_ids)))
             post.tags.set(random.sample(tags, tags_number))
-        return len(created)
+        return len(created) , published_dates
 
-    def _create_comments(self, fake: Faker, count: int) -> int:
+    def set_post_dates(self, posts: list[Post]) -> None:
+        now = timezone.now()
+        year_ago = now - timedelta(days=DATE_RANGE_DAYS)
+        for post in posts:
+            post.created_at = random_datetime(year_ago, now)
+            if post.status < EDITED_POST_RATIO:
+                post.updated_at = random_edit_time(post.created_at, now)
+
+        Post.objects.bulk_update(posts, ["created_at","updated_at"] , batch_size=BULK_CREATE_BATCH_SIZE)
+
+    def _create_comments(self, fake: Faker, count: int , published_dates: dict[int, timezone.datetime]) -> int:
         if not count:
             return 0
         user_ids = list(User.objects.values_list("id", flat=True))
-        post_ids = list(Post.objects.filter(status=Post.Status.PUBLISHED).values_list("id", flat=True))
+        post_ids = list(published_dates)
         comments = [
             Comment(
             post_id=random.choice(post_ids),
@@ -189,7 +225,9 @@ class Command(BaseCommand):
 
         for _ in range(count)
     ]
-    return len(Comment.objects.bulk_create(comments))
-
-
-
+    created_comments = Comment.objects.bulk_create(comments)
+    now = timezone.now()
+    for comment in created_comments:
+        comment.created_at = random_datetime(published_dates[comment.post_id], now)
+    Comment.objects.bulk_update(created, ["created_at"], batch_size=BULK_CREATE_BATCH_SIZE)
+    return len(created)
